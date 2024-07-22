@@ -1,5 +1,6 @@
 import pandas as pd
 
+from Availiability import Availiability
 from Volunteer import Volunteer
 
 
@@ -31,13 +32,80 @@ class Model:
         volunteers_infos = data.copy()
         volunteers_infos = volunteers_infos[['name', 'nb_perm', 'nb_surstaff', 'is_referent', 'last_perm']]
         volunteers_infos = volunteers_infos.rename(columns={'name': 'full_name'})
-        volunteers_infos = volunteers_infos.dropna()
 
         # Building the list of volunteers object
         for index, row in volunteers_infos.iterrows():
-            self.volunteers.append(Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm))
+            vol = Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
+            self.volunteers.append(vol)
 
+        # Extracting volunteers normal availiabilities
+        volunteers_availiablities = data.copy()
+        volunteers_availiablities = volunteers_availiablities[['name', 'dispo_perm']]
+        volunteers_availiablities = self.extractAvailiabilities(volunteers_availiablities)
+
+
+        # Generating availiabilites
+
+        availabilities_days = []
+
+        for name, availabilities in volunteers_availiablities.items():
+            for availability in availabilities:
+                availabilities_days.append(availability)
+
+        # Removing duplicates
+        availabilities_days = list(set(availabilities_days))
+
+
+
+
+
+
+        for index, row in volunteers_infos.iterrows():
+            vol = Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
+            self.volunteers.append(vol)
+
+
+        # Assigning
+        for index, row in volunteers_infos.iterrows():
+            vol = Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
+            self.volunteers.append(vol)
 
         print(volunteers_infos)
 
+    def extractAvailiabilities(self, availiability_df):
 
+        # target days column
+        availiability_df.columns = availiability_df.iloc[3]
+
+        # renaming first column
+        availiability_df.rename(columns={availiability_df.columns[0]: "name"}, inplace=True)
+
+        # Target space before first name
+        availiability_df.drop(availiability_df.index[0:4], inplace=True)
+        availiability_df.reset_index(drop=True, inplace=True)
+        availiability_df.dropna(subset=['name'], inplace=True)
+
+        dispos_name = availiability_df.iloc[:, 0]
+        dispos_dates = availiability_df.loc[:, availiability_df.columns != 'name']
+
+        dates = dispos_dates.columns.tolist()
+        dates_cleaned = [s.lstrip("0") for s in dates]
+
+        dispos_dates.columns = dates_cleaned
+
+        dispo_perm_clean = pd.concat([dispos_name, dispos_dates], axis=1)
+
+        # Replace by column header value where TRUE
+        dispo_perm_clean = dispo_perm_clean.where(dispo_perm_clean != "FALSE", dispo_perm_clean.columns.to_series(),
+                                                  axis=1)
+        dispo_perm_clean.reset_index(drop=True, inplace=True)
+
+        volunteers_availiabities_dict = dispo_perm_clean.set_index('name').T.to_dict('list')
+        cleaned_availiabilities_dict = {}
+
+        for key, value in volunteers_availiabities_dict.items():
+            cleaned_value = list(filter(lambda a: a not in ["TRUE"], value))
+            cleaned_value = list(map(int, cleaned_value))
+            cleaned_availiabilities_dict[key] = cleaned_value
+
+        return cleaned_availiabilities_dict

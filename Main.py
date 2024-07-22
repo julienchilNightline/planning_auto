@@ -6,9 +6,9 @@ print("Hello")
 
 # Defining main function
 def main():
-	url = "https://docs.google.com/spreadsheets/d/14n0elXUp9rN6lqsZQsjPdEMXfBem2Gvmx4Gnv41LLFU/export?format=csv"
+	url = "https://docs.google.com/spreadsheets/d/1f2RsLtd1A4MpRYau_KSApaGUA4L6M0qlZmrufrY4ohg/export?format=csv"
 	model = Model(url)
-	model.collect(5)
+	model.collect(4)
 
 
 main()
