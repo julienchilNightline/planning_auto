@@ -1,15 +1,17 @@
 import pandas as pd
 
-from Availiability import Availiability
+from Shift import Shift
 from Volunteer import Volunteer
 
 
-class Model:
+class PlanningData:
     volunteers = []
     shifts = []
+    time_break = 6
 
-    def __init__(self, planning_url):
+    def __init__(self, planning_url, name_column_position):
         self.planning_url = planning_url
+        self.collect(name_column_position)
 
     def collect(self, name_column_position):
         df = pd.read_csv(self.planning_url)
@@ -19,8 +21,6 @@ class Model:
         data.columns = data.iloc[name_column_position]
         data = data.drop(name_column_position)
         data = data.reset_index()
-
-        print(data.head())
 
         # Keeping useful column
         final_table_columns = ['name', 'nb_perm', 'nb_surstaff', 'is_referent', 'last_perm', 'dispo_perm',
@@ -33,46 +33,42 @@ class Model:
         volunteers_infos = volunteers_infos[['name', 'nb_perm', 'nb_surstaff', 'is_referent', 'last_perm']]
         volunteers_infos = volunteers_infos.rename(columns={'name': 'full_name'})
 
-        # Building the list of volunteers object
-        for index, row in volunteers_infos.iterrows():
-            vol = Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
-            self.volunteers.append(vol)
+        # Extracting volunteers normal availabilities
+        volunteers_availabilities = data.copy()
+        volunteers_availabilities = volunteers_availabilities[['name', 'dispo_perm']]
+        volunteers_availabilities = self.extractAvailabilities(volunteers_availabilities)
 
-        # Extracting volunteers normal availiabilities
-        volunteers_availiablities = data.copy()
-        volunteers_availiablities = volunteers_availiablities[['name', 'dispo_perm']]
-        volunteers_availiablities = self.extractAvailiabilities(volunteers_availiablities)
+        volunteers_availabilities_df = pd.DataFrame(volunteers_availabilities.items())
+        volunteers_availabilities_df.rename(columns={volunteers_availabilities_df.columns[0]: "full_name"},
+                                            inplace=True)
+        volunteers_availabilities_df.rename(columns={volunteers_availabilities_df.columns[1]: "availabilities"},
+                                            inplace=True)
 
-
-        # Generating availiabilites
-
+        # Generating list of possible normal shift
         availabilities_days = []
 
-        for name, availabilities in volunteers_availiablities.items():
+        for name, availabilities in volunteers_availabilities.items():
             for availability in availabilities:
                 availabilities_days.append(availability)
 
         # Removing duplicates
         availabilities_days = list(set(availabilities_days))
 
+        index = 0
+        for day in availabilities_days:
+            self.shifts.append(Shift(day, False, index))
+            index += 1
 
+        # Merging volunteers infos and availabilities
+        vol_infos_availabilities = pd.merge(volunteers_infos, volunteers_availabilities_df, on='full_name')
 
-
-
-
-        for index, row in volunteers_infos.iterrows():
-            vol = Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
+        # Building the list of volunteers object
+        for index, row in vol_infos_availabilities.iterrows():
+            vol = Volunteer(index, row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
+            vol.setAvailability(row.availabilities)
             self.volunteers.append(vol)
 
-
-        # Assigning
-        for index, row in volunteers_infos.iterrows():
-            vol = Volunteer(row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
-            self.volunteers.append(vol)
-
-        print(volunteers_infos)
-
-    def extractAvailiabilities(self, availiability_df):
+    def extractAvailabilities(self, availiability_df):
 
         # target days column
         availiability_df.columns = availiability_df.iloc[3]
@@ -109,3 +105,23 @@ class Model:
             cleaned_availiabilities_dict[key] = cleaned_value
 
         return cleaned_availiabilities_dict
+
+    def getVolunteers(self):
+        return self.volunteers
+
+    def getShifts(self):
+        return self.shifts
+
+    def getTimeBreak(self):
+        return self.time_break
+
+    def getMaxDayShift(self):
+        return max(self.shifts, key=lambda x: x.getDay())
+
+    def getNextShift(self, index, amount):
+        nextShifts = []
+
+        for i in range(index, min(amount, len(self.shifts) - index)):
+            nextShifts.append(self.shifts[i])
+
+        return nextShifts
