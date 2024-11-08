@@ -1,13 +1,14 @@
 class Volunteer:
-    availabilities = []
-    nb_perm_pref = 0
-    is_referent = False
 
     def __init__(self, index, name, nb_perm_pref, nb_surstaff_pref, is_referent, last_perm):
         self.index = index
         self.name = name
         self.nb_surstaff_pref = nb_surstaff_pref
         self.last_perm = last_perm
+        self.availabilities = []
+        self.nb_perm_pref = 0
+        self.is_referent = False
+        self.preference_matched = False
 
         self.cleanNbPermPref(nb_perm_pref)
         self.cleanIsReferent(is_referent)
@@ -46,3 +47,9 @@ class Volunteer:
             self.is_referent = True
         else:
             self.is_referent = False
+
+    def setPreferenceMatched(self):
+        self.preference_matched = True
+
+    def getPreferenceMatched(self):
+        return self.preference_matched

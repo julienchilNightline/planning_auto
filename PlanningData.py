@@ -44,6 +44,7 @@ class PlanningData:
         volunteers_availabilities_df.rename(columns={volunteers_availabilities_df.columns[1]: "availabilities"},
                                             inplace=True)
 
+
         # Generating list of possible normal shift
         availabilities_days = []
 
