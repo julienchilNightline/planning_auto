@@ -8,11 +8,9 @@ from Solver import Solver
 
 
 def main():
-	url = "https://docs.google.com/spreadsheets/d/1f2RsLtd1A4MpRYau_KSApaGUA4L6M0qlZmrufrY4ohg/export?format=csv"
-	data = PlanningData(url, 4)
+	url = "https://docs.google.com/spreadsheets/d/10JViIv7f2q8BF4TKiWcENLpU5_PYkHuYeEITSrrtlBU/export?format=csv"
+	data = PlanningData(url, 5, 12, 2024)
 	solver = Solver(data)
-
-	print("breakpoint")
 
 
 main()

@@ -1,7 +1,9 @@
 import pandas as pd
+from datetime import datetime
 
 from Shift import Shift
 from Volunteer import Volunteer
+import math
 
 
 class PlanningData:
@@ -9,9 +11,13 @@ class PlanningData:
     shifts = []
     time_break = 6
 
-    def __init__(self, planning_url, name_column_position):
+    def __init__(self, planning_url, name_column_position, month, year):
         self.planning_url = planning_url
+        self.month = month
+        self.year = year
+
         self.collect(name_column_position)
+
 
     def collect(self, name_column_position):
         df = pd.read_csv(self.planning_url)
@@ -23,14 +29,14 @@ class PlanningData:
         data = data.reset_index()
 
         # Keeping useful column
-        final_table_columns = ['name', 'nb_perm', 'nb_surstaff', 'is_referent', 'last_perm', 'dispo_perm',
+        final_table_columns = ['name', 'nb_perm', 'is_referent', 'last_perm', 'dispo_perm',
                                'dispo_surstaff']
         data = data.drop(columns=[col for col in data if col not in final_table_columns])
         data.name = data.name.str.replace('.', '')
 
         # Extracting volunteers infos
         volunteers_infos = data.copy()
-        volunteers_infos = volunteers_infos[['name', 'nb_perm', 'nb_surstaff', 'is_referent', 'last_perm']]
+        volunteers_infos = volunteers_infos[['name', 'nb_perm', 'is_referent', 'last_perm']]
         volunteers_infos = volunteers_infos.rename(columns={'name': 'full_name'})
 
         # Extracting volunteers normal availabilities
@@ -57,7 +63,8 @@ class PlanningData:
 
         index = 0
         for day in availabilities_days:
-            self.shifts.append(Shift(day, False, index))
+            date_format = datetime(self.year, self.month, day)
+            self.shifts.append(Shift(day, date_format, False, index))
             index += 1
 
         # Merging volunteers infos and availabilities
@@ -65,20 +72,23 @@ class PlanningData:
 
         # Building the list of volunteers object
         for index, row in vol_infos_availabilities.iterrows():
-            vol = Volunteer(index, row.full_name, row.nb_perm, row.nb_surstaff, row.is_referent, row.last_perm)
+            last_perm_date = datetime.strptime(row.last_perm, "%d/%m/%Y")
+
+            vol = Volunteer(index, row.full_name, row.nb_perm, row.is_referent, last_perm_date)
             vol.setAvailability(row.availabilities)
             self.volunteers.append(vol)
 
     def extractAvailabilities(self, availiability_df):
 
+        print(availiability_df)
         # target days column
-        availiability_df.columns = availiability_df.iloc[3]
+        availiability_df.columns = availiability_df.iloc[4]
 
         # renaming first column
         availiability_df.rename(columns={availiability_df.columns[0]: "name"}, inplace=True)
 
         # Target space before first name
-        availiability_df.drop(availiability_df.index[0:4], inplace=True)
+        availiability_df.drop(availiability_df.index[0:3], inplace=True)
         availiability_df.reset_index(drop=True, inplace=True)
         availiability_df.dropna(subset=['name'], inplace=True)
 
@@ -119,10 +129,20 @@ class PlanningData:
     def getMaxDayShift(self):
         return max(self.shifts, key=lambda x: x.getDay())
 
-    def getNextShift(self, index, amount):
-        nextShifts = []
+    def getNextShift(self, current_index, time_break):
+        current_shift = self.shifts[current_index]
+        next_shifts = []
 
-        for i in range(index, min(amount, len(self.shifts) - index)):
-            nextShifts.append(self.shifts[i])
+        # Parcourir les permanences suivantes
+        for next_shift in self.shifts[current_index + 1:]:
+            # Calculer la différence en jours entre les deux permanences
+            days_difference = (next_shift.getDate() - current_shift.getDate()).days
 
-        return nextShifts
+            # Si la différence dépasse le time_break, on arrête la recherche
+            if days_difference > time_break:
+                break
+
+            # Sinon, ajouter cette permanence à la liste
+            next_shifts.append(next_shift)
+
+        return next_shifts

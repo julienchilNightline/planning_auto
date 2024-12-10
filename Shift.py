@@ -1,11 +1,12 @@
 class Shift:
 
-    def __init__(self, day, is_surstaff, index):
+    def __init__(self, day, date, is_surstaff, index):
         self.day = day
         self.is_surstaff = is_surstaff
         self.index = index
         self.open = False
         self.volunteers_assigned = []
+        self.date = date
 
     def assignVolunteer(self, volunteer):
        self.volunteers_assigned.append(volunteer)
@@ -24,3 +25,6 @@ class Shift:
 
     def isOpen(self):
         return self.open
+
+    def getDate(self):
+        return self.date

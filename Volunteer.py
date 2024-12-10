@@ -1,9 +1,8 @@
 class Volunteer:
 
-    def __init__(self, index, name, nb_perm_pref, nb_surstaff_pref, is_referent, last_perm):
+    def __init__(self, index, name, nb_perm_pref, is_referent, last_perm):
         self.index = index
         self.name = name
-        self.nb_surstaff_pref = nb_surstaff_pref
         self.last_perm = last_perm
         self.availabilities = []
         self.nb_perm_pref = 0
