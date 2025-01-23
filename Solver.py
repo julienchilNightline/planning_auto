@@ -67,6 +67,11 @@ class Solver:
             # Pour chaque bénévole, il faut que le nombre de permanence assigné soit inférieur au minimum entre 3 et le nombre de perm souhaitée
             self.model.Add(sum(self.var_X[i.getIndex(), p.getDay()] for p in self.shifts) <= min(3, i.getNbPermPref()))
 
+            # Pour chaque bénévole, il faut au max 2 référence
+            self.model.Add(sum(
+                (self.var_X[i.getIndex(), p.getDay()] * i.isReferent()) for p in
+                self.shifts) <= 2)
+
             # Une pause d'au moins 6 jours entre deux permanences
             for p in self.shifts:
                 # Obtenir les permanences futures dans la fenêtre de 6 jours
@@ -98,7 +103,7 @@ class Solver:
 
         self.model.Maximize(
             sum(
-                (self.is_feasible[p.getDay()] + self.preference_match[i.getIndex()]) + self.four_ppl[p.getDay()]
+                (self.is_feasible[p.getDay()] + self.preference_match[i.getIndex()])
                 for i in self.volunteers
                 for p in self.shifts
             )
@@ -165,7 +170,7 @@ class Solver:
                         else:
                             row.append("X")
                     else:
-                        row.append("")  # Case vide si non assigné
+                        row.append("INDISPO" if vol.isAvailable(p.getDay()) == 0 else "DISPO")  # Case vide si non assigné
             rows.append("\t".join(row))
 
         # Calcul des statistiques

@@ -8,8 +8,8 @@ from Solver import Solver
 
 
 def main():
-	url = "https://docs.google.com/spreadsheets/d/10JViIv7f2q8BF4TKiWcENLpU5_PYkHuYeEITSrrtlBU/export?format=csv"
-	data = PlanningData(url, 5, 12, 2024)
+	url = "https://docs.google.com/spreadsheets/d/1AkYubhXbRQ-aD3V23JidfSY0b3lqcNJhvT5j_YJx6dI/export?format=csv"
+	data = PlanningData(url, 5, 2, 2025)
 	solver = Solver(data)
 
 
