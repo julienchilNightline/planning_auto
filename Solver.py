@@ -103,7 +103,7 @@ class Solver:
 
         self.model.Maximize(
             sum(
-                (self.is_feasible[p.getDay()] + self.preference_match[i.getIndex()])
+                (self.is_feasible[p.getDay()] + self.preference_match[i.getIndex()]) + self.four_ppl[p.getDay()]
                 for i in self.volunteers
                 for p in self.shifts
             )

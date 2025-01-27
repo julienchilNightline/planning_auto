@@ -82,13 +82,13 @@ class PlanningData:
 
         print(availiability_df)
         # target days column
-        availiability_df.columns = availiability_df.iloc[4]
+        availiability_df.columns = availiability_df.iloc[3]
 
         # renaming first column
         availiability_df.rename(columns={availiability_df.columns[0]: "name"}, inplace=True)
 
         # Target space before first name
-        availiability_df.drop(availiability_df.index[0:3], inplace=True)
+        availiability_df.drop(availiability_df.index[0:4], inplace=True)
         availiability_df.reset_index(drop=True, inplace=True)
         availiability_df.dropna(subset=['name'], inplace=True)
 
