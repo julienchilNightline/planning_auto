@@ -72,6 +72,9 @@ class PlanningData:
 
         # Building the list of volunteers object
         for index, row in vol_infos_availabilities.iterrows():
+            if pd.isna(row.last_perm):
+                row.last_perm = f"01/{self.month}/{self.year}"
+
             last_perm_date = datetime.strptime(row.last_perm, "%d/%m/%Y")
 
             vol = Volunteer(index, row.full_name, row.nb_perm, row.is_referent, last_perm_date)
