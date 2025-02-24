@@ -6,8 +6,8 @@ class Volunteer:
         self.last_perm = last_perm
         self.availabilities = []
         self.nb_perm_pref = 0
+        self.nb_perm_assigned = 0
         self.is_referent = False
-        self.preference_matched = False
 
         self.cleanNbPermPref(nb_perm_pref)
         self.cleanIsReferent(is_referent)
@@ -33,6 +33,15 @@ class Volunteer:
     def getNbPermPref(self):
         return self.nb_perm_pref
 
+    def getNbPermAssigned(self):
+        return self.nb_perm_assigned
+
+    def getLastPerm(self):
+        return self.last_perm
+
+    def assign(self):
+        self.nb_perm_assigned += 1
+
     def cleanNbPermPref(self, nb_perm_pref):
         if nb_perm_pref == "Peu importe":
             self.nb_perm_pref = 3
@@ -47,8 +56,4 @@ class Volunteer:
         else:
             self.is_referent = False
 
-    def setPreferenceMatched(self):
-        self.preference_matched = True
 
-    def getPreferenceMatched(self):
-        return self.preference_matched
