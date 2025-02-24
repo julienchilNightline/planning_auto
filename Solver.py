@@ -6,6 +6,7 @@ class Solver:
     four_ppl = {}
     preference_match = {}
     var_X = {}
+    var_gap = {}
 
     def __init__(self, data):
         self.planningData = data
@@ -24,6 +25,7 @@ class Solver:
     def initBoolVar(self):
         for i in self.volunteers:
             self.preference_match[i.getIndex()] = self.model.NewBoolVar(f"preference_match{i.getIndex()}")
+            self.var_gap[i.getIndex()] = self.model.NewIntVar(0, 3, f"gap{i.getIndex()}")
 
             for p in self.shifts:
                 self.var_X[(i.getIndex(), p.getDay())] = self.model.NewBoolVar(f"X_i{i.getIndex()}_p{p.getDay()}")
@@ -91,22 +93,26 @@ class Solver:
                         # Empêcher d'assigner le volontaire si la dernière permanence est trop proche
                         self.model.Add(self.var_X[i.getIndex(), p.getDay()] == 0)
 
-            # On encourage le respect du nombre de perm préféré par les volontaires
+            # Ecart du respect de la préférence des volontaires
+            assigned_perm = sum(self.var_X[i.getIndex(), p.getDay()] for p in self.shifts)
+            self.model.Add(self.var_gap[i.getIndex()] >= i.getNbPermPref() - assigned_perm)
+            self.model.Add(self.var_gap[i.getIndex()] >= assigned_perm - i.getNbPermPref())
+
+            '''
             self.model.Add(sum(self.var_X[i.getIndex(), p.getDay()] * i.isAvailable(p.getDay()) for p in
                                self.shifts) == i.getNbPermPref()).OnlyEnforceIf(
                 self.preference_match[i.getIndex()])
             self.model.Add(sum(self.var_X[i.getIndex(), p.getDay()] * i.isAvailable(p.getDay()) for p in
                                self.shifts) < i.getNbPermPref()).OnlyEnforceIf(
                 self.preference_match[i.getIndex()].Not())
+            '''
 
     def initObjectiveFunction(self):
-
         self.model.Maximize(
-            sum(
-                (self.is_feasible[p.getDay()] + self.preference_match[i.getIndex()])
-                for i in self.volunteers
-                for p in self.shifts
-            )
+            sum(self.is_feasible[p.getDay()] for p in self.shifts)
+            - sum(self.var_gap[i.getIndex()] for i in self.volunteers)
+            #"+ sum(self.four_ppl[(p.getDay())] for p in self.shifts)
+            #+ sum(self.var_X[i.getIndex(), p.getDay()] for i in self.volunteers for p in self.shifts)
         )
 
     def solve(self):
@@ -128,6 +134,7 @@ class Solver:
                     for i in self.volunteers:
                         if self.solver.Value(self.var_X[(i.getIndex(), p.getDay())]) == 1:
                             p.assignVolunteer(i)
+                            i.assign()
 
         else:
             print("No solutions found !")
@@ -135,6 +142,7 @@ class Solver:
     def printPlanning(self):
         countNbPerm = 0
         nbAssignement = 0
+        nbPermPrefMatch = 0
         nbPermFourPeople = 0
 
         for p in self.shifts:
@@ -148,20 +156,25 @@ class Solver:
                 for vol in p.volunteers_assigned:
                     print(f"{vol.getName()} is referent : {vol.isReferent()}")
 
-        print(f"nombre de permanence faisables : {countNbPerm}")
-        print(f"nombre d'assignements : {nbAssignement}")
-        print(f"nombre de permanence à quatre personnes : {nbPermFourPeople}")
+        for i in self.volunteers:
+            if(i.getNbPermPref() == i.getNbPermAssigned()):
+                nbPermPrefMatch += 1
+
+        print(f"Nombre de permanence faisables : {countNbPerm}")
+        print(f"Nombre d'assignements : {nbAssignement}")
+        print(f"Nombre de souhait respecté : {nbPermPrefMatch}")
+        print(f"Nombre de permanence à quatre personnes : {nbPermFourPeople}")
 
     def printResultsForSheet(self):
         # Titre des colonnes : bénévole / date
-        headers = ["Bénévole / Date"] + [f"Jour {p.getDay()} ({p.getDate().strftime('%d/%m')})" for p in self.shifts if
+        headers = ["Bénévole"] + ["Est référent ?"] + ["Date de dernière perm"] + ["Nombre de permanences souhaitées"] + ["Nombre de permanence assignée"] + [f"Jour {p.getDay()} ({p.getDate().strftime('%d/%m')})" for p in self.shifts if
                                          p.isOpen()]
         header_line = "\t".join(headers)
 
         # Contenu des lignes
         rows = []
         for vol in self.volunteers:
-            row = [vol.getName()]
+            row = [vol.getName(), str("Oui" if vol.isReferent() == 1 else "Non" ), str(vol.getLastPerm()), str(vol.getNbPermPref()), str(vol.getNbPermAssigned())]
             for p in self.shifts:
                 if p.isOpen():
                     if vol in p.getAssignedVolunteers():
@@ -173,21 +186,7 @@ class Solver:
                         row.append("INDISPO" if vol.isAvailable(p.getDay()) == 0 else "DISPO")  # Case vide si non assigné
             rows.append("\t".join(row))
 
-        # Calcul des statistiques
-        count_nb_perm = sum(1 for p in self.shifts if p.isOpen())
-        nb_perm_four_people = sum(1 for p in self.shifts if len(p.getAssignedVolunteers()) >= 4)
-
-        # Affichage des statistiques
-        stats = [
-            "",  # Ligne vide pour séparer le tableau des stats
-            f"Nombre de permanences faisables : {count_nb_perm}",
-            f"Nombre de permanences à 4 personnes : {nb_perm_four_people}"
-        ]
-
         # Affichage dans la console
         print(header_line)
         for row in rows:
             print(row)
-
-        for stat in stats:
-            print(stat)
