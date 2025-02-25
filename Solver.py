@@ -7,6 +7,7 @@ class Solver:
     preference_match = {}
     var_X = {}
     var_gap = {}
+    var_ref = {}
 
     def __init__(self, data):
         self.planningData = data
@@ -29,10 +30,12 @@ class Solver:
 
             for p in self.shifts:
                 self.var_X[(i.getIndex(), p.getDay())] = self.model.NewBoolVar(f"X_i{i.getIndex()}_p{p.getDay()}")
+                self.var_ref[(i.getIndex(), p.getDay())] = self.model.NewBoolVar(f"ref_i{i.getIndex()}_p{p.getDay()}")
 
         for p in self.shifts:
             self.is_feasible[(p.getDay())] = self.model.NewBoolVar(f"is_feasible{p.getDay()}")
             self.four_ppl[(p.getDay())] = self.model.NewBoolVar(f"four_ppl{p.getDay()}")
+
 
     def initConstraints(self):
         self.constraintsOnShift(3, 4)
@@ -70,9 +73,11 @@ class Solver:
             self.model.Add(sum(self.var_X[i.getIndex(), p.getDay()] for p in self.shifts) <= min(3, i.getNbPermPref()))
 
             # Pour chaque bénévole, il faut au max 2 référence
+            '''
             self.model.Add(sum(
                 (self.var_X[i.getIndex(), p.getDay()] * i.isReferent()) for p in
                 self.shifts) <= 2)
+            '''
 
             # Une pause d'au moins 6 jours entre deux permanences
             for p in self.shifts:
@@ -84,6 +89,18 @@ class Solver:
                     sum(self.var_X[i.getIndex(), w.getDay()] for w in next_shifts) + self.var_X[
                         i.getIndex(), p.getDay()] <= 1
                 )
+
+
+                # var_ref peut être activé seulement si le volontaire est assigné et s'il est un référent
+                self.model.Add(self.var_ref[(i.getIndex(), p.getDay())] <= self.var_X[i.getIndex(), p.getDay()])
+                self.model.Add(self.var_ref[(i.getIndex(), p.getDay())] <= i.isReferent())
+
+                # Si le volontaire est assigné ET il est référent, alors var_ref doit être activé
+                self.model.Add(self.var_ref[(i.getIndex(), p.getDay())] >= self.var_X[
+                    i.getIndex(), p.getDay()] + i.isReferent() - 1)
+
+
+            self.model.Add(sum(self.var_ref[(i.getIndex(), p.getDay())] for p in self.shifts) <= 2)
 
             # Empêcher d'assigner le volontaire si la dernière permanence est trop proche
             if i.last_perm:
@@ -110,9 +127,9 @@ class Solver:
     def initObjectiveFunction(self):
         self.model.Maximize(
             sum(self.is_feasible[p.getDay()] for p in self.shifts)
-            #- sum(self.var_gap[i.getIndex()] for i in self.volunteers)
-            #"+ sum(self.four_ppl[(p.getDay())] for p in self.shifts)
-            #+ sum(self.var_X[i.getIndex(), p.getDay()] for i in self.volunteers for p in self.shifts)
+            - sum(self.var_gap[i.getIndex()] for i in self.volunteers)
+            #+ sum(self.four_ppl[(p.getDay())] for p in self.shifts)
+            # sum(self.var_X[i.getIndex(), p.getDay()] for i in self.volunteers for p in self.shifts)
         )
 
     def solve(self):
@@ -152,17 +169,13 @@ class Solver:
                 if (len(p.volunteers_assigned) >= 4):
                     nbPermFourPeople += 1
 
-                print(f"PERMANENCE OUVERTE LE {p.getDay()}")
-                for vol in p.volunteers_assigned:
-                    print(f"{vol.getName()} is referent : {vol.isReferent()}")
-
         for i in self.volunteers:
             if(i.getNbPermPref() == i.getNbPermAssigned()):
                 nbPermPrefMatch += 1
 
         print(f"Nombre de permanence faisables : {countNbPerm}")
         print(f"Nombre d'assignements : {nbAssignement}")
-        print(f"Nombre de souhait respecté : {nbPermPrefMatch}")
+        print(f"Nombre de souhait respecté : {nbPermPrefMatch} / {len(self.volunteers)}")
         print(f"Nombre de permanence à quatre personnes : {nbPermFourPeople}")
 
     def printResultsForSheet(self):
@@ -178,7 +191,7 @@ class Solver:
             for p in self.shifts:
                 if p.isOpen():
                     if vol in p.getAssignedVolunteers():
-                        if vol.isReferent():
+                        if self.solver.Value(self.var_ref[(vol.getIndex(), p.getDay())]) == 1:
                             row.append("X (Référent)")
                         else:
                             row.append("X")
