@@ -111,7 +111,7 @@ class Solver:
                         self.model.Add(self.var_X[i.getIndex(), p.getDay()] == 0)
 
             # Ecart du respect de la préférence des volontaires
-            assigned_perm = sum(self.var_X[i.getIndex(), p.getDay()] for p in self.shifts)
+            assigned_perm = sum(self.var_X[i.getIndex(), p.getDay()] * i.isAvailable(p.getDay()) for p in self.shifts)
             self.model.Add(self.var_gap[i.getIndex()] >= i.getNbPermPref() - assigned_perm)
             self.model.Add(self.var_gap[i.getIndex()] >= assigned_perm - i.getNbPermPref())
 
@@ -126,9 +126,9 @@ class Solver:
 
     def initObjectiveFunction(self):
         self.model.Maximize(
-            sum(self.is_feasible[p.getDay()] for p in self.shifts)
-            - sum(self.var_gap[i.getIndex()] for i in self.volunteers)
-            #+ sum(self.four_ppl[(p.getDay())] for p in self.shifts)
+            (sum(self.is_feasible[p.getDay()] for p in self.shifts)
+            - sum(self.var_gap[i.getIndex()] for i in self.volunteers))
+            + sum(self.four_ppl[(p.getDay())] for p in self.shifts)
             # sum(self.var_X[i.getIndex(), p.getDay()] for i in self.volunteers for p in self.shifts)
         )
 
@@ -178,25 +178,30 @@ class Solver:
         print(f"Nombre de souhait respecté : {nbPermPrefMatch} / {len(self.volunteers)}")
         print(f"Nombre de permanence à quatre personnes : {nbPermFourPeople}")
 
+
     def printResultsForSheet(self):
         # Titre des colonnes : bénévole / date
-        headers = ["Bénévole"] + ["Est référent ?"] + ["Date de dernière perm"] + ["Nombre de permanences souhaitées"] + ["Nombre de permanence assignée"] + [f"Jour {p.getDay()} ({p.getDate().strftime('%d/%m')})" for p in self.shifts if
-                                         p.isOpen()]
+        headers = ["Bénévole", "Est référent ?", "Date de dernière perm", "Nombre de permanences souhaitées",
+                   "Nombre de permanence assignée"]
+        headers += [f"Jour {p.getDay()} ({p.getDate().strftime('%d/%m')}) - {'Ouvert' if p.isOpen() else 'Fermé'}" for p
+                    in self.shifts]
+
         header_line = "\t".join(headers)
 
         # Contenu des lignes
         rows = []
         for vol in self.volunteers:
-            row = [vol.getName(), str("Oui" if vol.isReferent() == 1 else "Non" ), str(vol.getLastPerm()), str(vol.getNbPermPref()), str(vol.getNbPermAssigned())]
+            row = [vol.getName(), "Oui" if vol.isReferent() else "Non", str(vol.getLastPerm()),
+                   str(vol.getNbPermPref()), str(vol.getNbPermAssigned())]
             for p in self.shifts:
                 if p.isOpen():
                     if vol in p.getAssignedVolunteers():
-                        if self.solver.Value(self.var_ref[(vol.getIndex(), p.getDay())]) == 1:
-                            row.append("X (Référent)")
-                        else:
-                            row.append("X")
+                        row.append("X (Référent)" if vol.isReferent() else "X")
                     else:
-                        row.append("INDISPO" if vol.isAvailable(p.getDay()) == 0 else "DISPO")  # Case vide si non assigné
+                        row.append("INDISPO" if not vol.isAvailable(p.getDay()) else "DISPO")
+                else:  # Pour les permanences fermées
+                    row.append("INDISPO" if not vol.isAvailable(p.getDay()) else "DISPO")
+
             rows.append("\t".join(row))
 
         # Affichage dans la console
