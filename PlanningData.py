@@ -85,13 +85,13 @@ class PlanningData:
 
         print(availiability_df)
         # target days column
-        availiability_df.columns = availiability_df.iloc[2]
+        availiability_df.columns = availiability_df.iloc[4]
 
         # renaming first column
         availiability_df.rename(columns={availiability_df.columns[0]: "name"}, inplace=True)
 
         # Target space before first name
-        availiability_df.drop(availiability_df.index[0:3], inplace=True)
+        availiability_df.drop(availiability_df.index[0:7], inplace=True)
         availiability_df.reset_index(drop=True, inplace=True)
         availiability_df.dropna(subset=['name'], inplace=True)
 
@@ -105,8 +105,8 @@ class PlanningData:
 
         dispo_perm_clean = pd.concat([dispos_name, dispos_dates], axis=1)
 
-        # Replace by column header value where TRUE
-        dispo_perm_clean = dispo_perm_clean.where(dispo_perm_clean != "FALSE", dispo_perm_clean.columns.to_series(),
+        # Replace by column header value where False
+        dispo_perm_clean = dispo_perm_clean.where(dispo_perm_clean != "TRUE", dispo_perm_clean.columns.to_series(),
                                                   axis=1)
         dispo_perm_clean.reset_index(drop=True, inplace=True)
 
@@ -114,7 +114,7 @@ class PlanningData:
         cleaned_availiabilities_dict = {}
 
         for key, value in volunteers_availiabities_dict.items():
-            cleaned_value = list(filter(lambda a: a not in ["TRUE"], value))
+            cleaned_value = list(filter(lambda a: a not in ["FALSE"], value))
             cleaned_value = list(map(int, cleaned_value))
             cleaned_availiabilities_dict[key] = cleaned_value
 
