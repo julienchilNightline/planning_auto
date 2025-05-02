@@ -128,7 +128,7 @@ class Solver:
         self.model.Maximize(
             (sum(self.is_feasible[p.getDay()] for p in self.shifts)
             - sum(self.var_gap[i.getIndex()] for i in self.volunteers))
-            + sum(self.four_ppl[(p.getDay())] for p in self.shifts)
+            #+ sum(self.four_ppl[(p.getDay())] for p in self.shifts)
             # sum(self.var_X[i.getIndex(), p.getDay()] for i in self.volunteers for p in self.shifts)
         )
 
